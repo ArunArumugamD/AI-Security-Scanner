@@ -1,3 +1,39 @@
+// Theme management
+const themeToggle = document.getElementById('themeToggle');
+const htmlElement = document.documentElement;
+
+if (!localStorage.getItem('theme')) {
+    localStorage.setItem('theme', 'dark');
+    htmlElement.setAttribute('data-theme', 'dark');
+    updateThemeIcon('dark');
+}
+
+// Check for saved theme preference or default to dark mode
+const currentTheme = localStorage.getItem('theme') || 'dark';
+htmlElement.setAttribute('data-theme', currentTheme);
+updateThemeIcon(currentTheme);
+
+// Theme toggle functionality
+themeToggle.addEventListener('click', () => {
+    const currentTheme = htmlElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    htmlElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+});
+
+function updateThemeIcon(theme) {
+    const icon = themeToggle.querySelector('i');
+    if (theme === 'dark') {
+        icon.className = 'fas fa-sun';
+        themeToggle.title = 'Switch to light mode';
+    } else {
+        icon.className = 'fas fa-moon';
+        themeToggle.title = 'Switch to dark mode';
+    }
+}
+
 // Scanner functionality
 const codeInput = document.getElementById('codeInput');
 const scanBtn = document.getElementById('scanBtn');

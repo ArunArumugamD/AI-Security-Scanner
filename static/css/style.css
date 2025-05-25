@@ -1,3 +1,4 @@
+/* Light mode variables */
 :root {
     --primary-color: #3b82f6;
     --secondary-color: #1e40af;
@@ -10,6 +11,25 @@
     --text-primary: #111827;
     --text-secondary: #6b7280;
     --border-color: #e5e7eb;
+    --code-bg: #1e293b;
+    --code-color: #e2e8f0;
+}
+
+/* Dark mode variables */
+[data-theme="dark"] {
+    --primary-color: #60a5fa;
+    --secondary-color: #3b82f6;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --success-color: #10b981;
+    --info-color: #3b82f6;
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --code-bg: #020617;
+    --code-color: #e2e8f0;
 }
 
 * {
@@ -18,11 +38,93 @@
     box-sizing: border-box;
 }
 
+/* Smooth transitions */
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
     color: var(--text-primary);
     line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.code-input, .results-section, .info-card {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+#themeToggle {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+#themeToggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* Dark mode button colors */
+[data-theme="dark"] .btn-secondary {
+    background-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background-color: #475569;
+}
+
+/* Update code snippet for dark mode */
+.code-snippet {
+    background-color: var(--code-bg);
+    color: var(--code-color);
+}
+
+/* Update textarea for dark mode */
+#codeInput {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+#codeInput::placeholder {
+    color: var(--text-secondary);
+}
+
+/* Fix syntax highlighting in dark mode */
+[data-theme="dark"] .vulnerability-item {
+    background: #0f172a;
+}
+
+[data-theme="dark"] .summary-section {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+/* Dark mode success/error messages */
+[data-theme="dark"] .success-message {
+    background-color: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .error-message {
+    background-color: #7f1d1d;
+    color: #fca5a5;
 }
 
 .container {
@@ -236,8 +338,8 @@ header p {
 }
 
 .code-snippet {
-    background-color: #1e293b;
-    color: #e2e8f0;
+    background-color: var(--code-bg);
+    color: var(--code-color);
     padding: 10px;
     border-radius: 6px;
     font-family: 'Courier New', monospace;
@@ -371,4 +473,14 @@ header p {
     #codeInput {
         height: 300px;
     }
+}
+
+/* Additional dark mode fixes for better visibility */
+[data-theme="dark"] .loading-overlay {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+[data-theme="dark"] .spinner {
+    border: 5px solid #334155;
+    border-top: 5px solid var(--primary-color);
 }
