@@ -1,0 +1,104 @@
+{
+    "rules": [
+        {
+            "id": "SQL_INJECTION_001",
+            "name": "SQL Injection - String Concatenation",
+            "description": "SQL queries should not be constructed using string concatenation with user input",
+            "severity": "CRITICAL",
+            "pattern": "(execute|query)\\s*\\(.*?['\"].*?\\+.*?\\)",
+            "message": "Potential SQL injection vulnerability. Use parameterized queries instead.",
+            "cwe": "CWE-89",
+            "owasp": "A03:2021"
+        },
+        {
+            "id": "SQL_INJECTION_002",
+            "name": "SQL Injection - String Formatting",
+            "description": "SQL queries should not use string formatting with user input",
+            "severity": "CRITICAL",
+            "pattern": "(execute|query)\\s*\\(.*?(\\.format|%|f['\"])",
+            "message": "Potential SQL injection via string formatting. Use parameterized queries.",
+            "cwe": "CWE-89",
+            "owasp": "A03:2021"
+        },
+        {
+            "id": "HARDCODED_SECRET_001",
+            "name": "Hardcoded Password",
+            "description": "Passwords should not be hardcoded in source code",
+            "severity": "HIGH",
+            "pattern": "(password|passwd|pwd)\\s*=\\s*['\"][^'\"]+['\"]",
+            "message": "Hardcoded password detected. Use environment variables or secure vaults.",
+            "cwe": "CWE-798",
+            "owasp": "A07:2021"
+        },
+        {
+            "id": "HARDCODED_SECRET_002",
+            "name": "Hardcoded API Key",
+            "description": "API keys should not be hardcoded in source code",
+            "severity": "HIGH",
+            "pattern": "(api_key|apikey|secret_key|secret)\\s*=\\s*['\"][^'\"]+['\"]",
+            "message": "Hardcoded API key detected. Use environment variables.",
+            "cwe": "CWE-798",
+            "owasp": "A07:2021"
+        },
+        {
+            "id": "PATH_TRAVERSAL_001",
+            "name": "Path Traversal",
+            "description": "File paths should not be constructed from user input without validation",
+            "severity": "HIGH",
+            "pattern": "open\\s*\\(.*?\\+.*?\\)",
+            "message": "Potential path traversal vulnerability. Validate and sanitize file paths.",
+            "cwe": "CWE-22",
+            "owasp": "A01:2021"
+        },
+        {
+            "id": "COMMAND_INJECTION_001",
+            "name": "Command Injection - os.system",
+            "description": "System commands should not include user input",
+            "severity": "CRITICAL",
+            "pattern": "os\\.system\\s*\\(.*?\\+.*?\\)",
+            "message": "Potential command injection. Use subprocess with proper escaping.",
+            "cwe": "CWE-78",
+            "owasp": "A03:2021"
+        },
+        {
+            "id": "INSECURE_RANDOM_001",
+            "name": "Insecure Random",
+            "description": "Use cryptographically secure random for security purposes",
+            "severity": "MEDIUM",
+            "pattern": "random\\.(random|randint|choice)\\s*\\(",
+            "message": "Insecure random number generator. Use secrets module for security.",
+            "cwe": "CWE-330",
+            "owasp": "A02:2021"
+        },
+        {
+            "id": "EVAL_USAGE_001",
+            "name": "Use of eval()",
+            "description": "Avoid using eval() as it can execute arbitrary code",
+            "severity": "CRITICAL",
+            "pattern": "eval\\s*\\(",
+            "message": "Use of eval() is dangerous and can lead to code injection.",
+            "cwe": "CWE-95",
+            "owasp": "A03:2021"
+        },
+        {
+            "id": "WEAK_CRYPTO_001",
+            "name": "Weak Cryptography - MD5",
+            "description": "MD5 is cryptographically broken and should not be used",
+            "severity": "HIGH",
+            "pattern": "hashlib\\.md5\\s*\\(",
+            "message": "MD5 is insecure. Use SHA-256 or stronger algorithms.",
+            "cwe": "CWE-327",
+            "owasp": "A02:2021"
+        },
+        {
+            "id": "INSECURE_DESERIALIZATION_001",
+            "name": "Pickle Deserialization",
+            "description": "Pickle can execute arbitrary code during deserialization",
+            "severity": "HIGH",
+            "pattern": "pickle\\.loads?\\s*\\(",
+            "message": "Pickle deserialization can execute arbitrary code. Use JSON instead.",
+            "cwe": "CWE-502",
+            "owasp": "A08:2021"
+        }
+    ]
+}
