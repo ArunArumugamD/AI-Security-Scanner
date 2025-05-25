@@ -113,5 +113,7 @@ class PythonParser:
         if isinstance(node.func, ast.Name):
             return node.func.id
         elif isinstance(node.func, ast.Attribute):
-            return f"{self._get_call_name(node.func.value)}.{node.func.attr}"
+            # Simple approach - just return the attribute name
+            # This handles most common cases like conn.execute()
+            return node.func.attr
         return None
