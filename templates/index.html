@@ -7,9 +7,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
 </head>
 <body>
-        <div class="theme-toggle">
+    <div class="theme-toggle">
         <button id="themeToggle" title="Toggle theme">
             <i class="fas fa-moon"></i>
         </button>
@@ -18,7 +20,7 @@
     <div class="container">
         <header>
             <h1><i class="fas fa-shield-alt"></i> AI Security Scanner</h1>
-            <p>Detect security vulnerabilities in your  code</p>
+            <p>Detect security vulnerabilities in your code</p>
         </header>
 
         <main>
@@ -26,11 +28,17 @@
                 <div class="code-input">
                     <div class="section-header">
                         <h2>Code Input</h2>
-                        <button id="exampleBtn" class="btn-secondary">
-                            <i class="fas fa-code"></i> Load Example
-                        </button>
+                        <div class="header-actions">
+                            <button id="exampleBtn" class="btn-secondary">
+                                <i class="fas fa-code"></i> Load Example
+                            </button>
+                            <label for="fileInput" class="btn-secondary">
+                                <i class="fas fa-upload"></i> Upload File
+                            </label>
+                            <input type="file" id="fileInput" accept=".py" style="display: none">
+                        </div>
                     </div>
-                    <textarea id="codeInput" placeholder="Paste your Python code here..."></textarea>
+                    <textarea id="codeInput" placeholder="Paste your code here..."></textarea>
                     <div class="actions">
                         <button id="scanBtn" class="btn-primary">
                             <i class="fas fa-search"></i> Scan Code
@@ -42,7 +50,17 @@
                 </div>
 
                 <div class="results-section">
-                    <h2>Scan Results</h2>
+                    <div class="section-header">
+                        <h2>Scan Results</h2>
+                        <div class="export-actions" style="display: none;">
+                            <button id="exportJsonBtn" class="btn-secondary">
+                                <i class="fas fa-download"></i> Export JSON
+                            </button>
+                            <button id="exportReportBtn" class="btn-secondary">
+                                <i class="fas fa-file-pdf"></i> Export Report
+                            </button>
+                        </div>
+                    </div>
                     <div id="results">
                         <div class="empty-state">
                             <i class="fas fa-clipboard-list"></i>
@@ -85,6 +103,12 @@
         <p>Analyzing code...</p>
     </div>
 
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Add Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
     <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
 </body>
 </html>
