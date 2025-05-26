@@ -1,3 +1,6 @@
+import logging
+import traceback
+from src.scanner.validators import CodeValidator
 import re
 import json
 import ast
@@ -40,43 +43,93 @@ class SecurityAnalyzer:
     
     def analyze_code(self, code: str, filename: str = "uploaded_code.py") -> Dict[str, Any]:
         """Analyze code for security vulnerabilities"""
-        from src.scanner.parser import PythonParser
-        
-        vulnerabilities = []
-        
-        # Parse the code
-        parser = PythonParser()
-        parsed = parser.parse(code)
-        
-        if parsed.get('error'):
-            return {
-                'success': False,
-                'error': parsed['error'],
-                'vulnerabilities': []
+        try:
+
+            is_valid, error_msg = CodeValidator.validate_code_input(code,filename)
+            if not is_valid:
+                return {
+                    'success' : False,
+                    'error' : error_msg,
+                    'vulnerabilities' : []
+                }
+            
+            filename = CodeValidator.sanitize_filename(filename)
+
+            vulnerabilities = []
+            parse_error = None
+
+            from src.scanner.parser import PythonParser
+            parser = PythonParser()
+
+            try:
+                parsed = parser.parse(code)
+            except RecursionError:
+                return {
+                    'success' : False,
+                    'error' : 'Code is too complex or contains infinite recursion',
+                    'vulnerabilities' : []
+                }
+            except MemoryError:
+                return {
+                    'success' : False,
+                    'error' : 'Code requires too much memory to analyze',
+                    'vulnerabilities' : []
+                }
+            
+            if parsed.get('error'):
+                parse_error = parsed['error']
+
+            try:
+                rule_vulns = self._apply_rules(code, filename)
+                vulnerabilities.extend(rule_vulns)
+            except Exception as e:
+                logging.error(f"Error in rule-based detection: {str(e)}")
+
+            if parsed.get('ast'):
+                try:
+                    ast_vulns = self._analyze_ast(parsed['ast'], code, filename)
+                    vulnerabilities.extend(ast_vulns)
+                except Exception as e:
+                    logging.error(f"Error in AST analysis: {str(e)}")
+
+            seen = set()
+            unique_vulns = []
+            for vuln in vulnerabilities:
+                key = (vuln.rule_id, vuln.line, vuln.column)
+                if key not in seen:
+                    seen.add(key)
+                    unique_vulns.append(vuln)
+
+            vulnerabilities = unique_vulns
+
+            vulnerabilities.sort(key = lambda v: (
+                -config.SEVERITY_LEVELS.get(v.severity, 0),
+                v.line
+            ))
+
+            response = {
+                'success' : True,
+                'vulnerabilities' : [asdict(v) for v in vulnerabilities],
+                'summary' : self._generate_summary(vulnerabilities),
+                'metrics' : self._calculate_metrics(code, vulnerabilities)
             }
+
+            if parse_error:
+                response['warning'] = f"Partial analysis completed. Parse warning: {parse_error}"
+
+            return response
         
-        # Rule-based detection
-        rule_vulns = self._apply_rules(code, filename)
-        vulnerabilities.extend(rule_vulns)
-        
-        # AST-based detection
-        if parsed.get('ast'):
-            ast_vulns = self._analyze_ast(parsed['ast'], code, filename)
-            vulnerabilities.extend(ast_vulns)
-        
-        # Sort by severity and line number
-        vulnerabilities.sort(key=lambda v: (
-            -config.SEVERITY_LEVELS.get(v.severity, 0),
-            v.line
-        ))
-        
-        return {
-            'success': True,
-            'vulnerabilities': [asdict(v) for v in vulnerabilities],
-            'summary': self._generate_summary(vulnerabilities),
-            'metrics': self._calculate_metrics(code, vulnerabilities)
-        }
+        except Exception as e:
+            logging.error(f"Unexpected error in analyze_code: {str(e)}")
+            logging.error(traceback.format_exc())
+
+            return{
+                'success' : False,
+                'error' : 'An unexpected error occurred during analysis. Please try again.',
+                'vulnerabilities' : []
+            }
     
+
     def _apply_rules(self, code: str, filename: str) -> List[Vulnerability]:
         """Apply regex-based security rules"""
         vulnerabilities = []
