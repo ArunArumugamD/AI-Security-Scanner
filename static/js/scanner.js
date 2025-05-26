@@ -2,6 +2,7 @@
 const themeToggle = document.getElementById('themeToggle');
 const htmlElement = document.documentElement;
 
+// Force dark mode on first load if no preference is set
 if (!localStorage.getItem('theme')) {
     localStorage.setItem('theme', 'dark');
     htmlElement.setAttribute('data-theme', 'dark');
@@ -32,6 +33,29 @@ function updateThemeIcon(theme) {
         icon.className = 'fas fa-moon';
         themeToggle.title = 'Switch to dark mode';
     }
+}
+
+// Add client-side validation
+function validateCode(code) {
+    const MAX_SIZE = 1024 * 1024; // 1MB
+    const MIN_LENGTH = 10;
+    
+    if (!code || code.trim().length === 0) {
+        return { valid: false, error: 'Please enter some code to scan' };
+    }
+    
+    if (code.trim().length < MIN_LENGTH) {
+        return { valid: false, error: 'Code is too short. Please provide at least 10 characters' };
+    }
+    
+    // Check size
+    const sizeInBytes = new Blob([code]).size;
+    if (sizeInBytes > MAX_SIZE) {
+        const sizeMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+        return { valid: false, error: `Code size (${sizeMB}MB) exceeds maximum allowed size (1MB)` };
+    }
+    
+    return { valid: true };
 }
 
 // Scanner functionality
@@ -99,17 +123,22 @@ scanBtn.addEventListener('click', scanCode);
 clearBtn.addEventListener('click', clearCode);
 exampleBtn.addEventListener('click', loadExample);
 
-// Functions
+// Enhanced scanCode function with better error handling
 async function scanCode() {
-    const code = codeInput.value.trim();
+    const code = codeInput.value;
     
-    if (!code) {
-        showError('Please enter some code to scan');
+    // Client-side validation
+    const validation = validateCode(code);
+    if (!validation.valid) {
+        showError(validation.error);
         return;
     }
     
     // Show loading
     loadingOverlay.classList.add('active');
+    
+    // Disable scan button to prevent double-clicks
+    scanBtn.disabled = true;
     
     try {
         const response = await fetch('/api/scan', {
@@ -120,39 +149,93 @@ async function scanCode() {
             body: JSON.stringify({
                 code: code,
                 filename: 'user_code.py'
-            })
+            }),
+            // Add timeout
+            signal: AbortSignal.timeout(30000) // 30 second timeout
         });
         
         const data = await response.json();
         
+        if (response.status === 429) {
+            showError('Rate limit exceeded. Please wait a moment before scanning again.');
+            return;
+        }
+        
+        if (response.status === 413) {
+            showError('Code is too large. Please reduce the size and try again.');
+            return;
+        }
+        
+        if (response.status === 408) {
+            showError('Analysis timed out. Please try with smaller code.');
+            return;
+        }
+        
+        if (!response.ok) {
+            showError(data.error || `Server error: ${response.status}`);
+            return;
+        }
+        
         if (data.success) {
             displayResults(data);
+            
+            // Show analysis time if available
+            if (data.analysis_time) {
+                console.log(`Analysis completed in ${data.analysis_time}s`);
+            }
+            
+            // Show warning if partial analysis
+            if (data.warning) {
+                showWarning(data.warning);
+            }
         } else {
             showError(data.error || 'An error occurred during scanning');
         }
     } catch (error) {
-        showError('Failed to connect to the scanner service');
-        console.error(error);
+        if (error.name === 'AbortError') {
+            showError('Request timed out. Please try with smaller code.');
+        } else if (error.message.includes('Failed to fetch')) {
+            showError('Unable to connect to the scanner service. Please check your connection.');
+        } else {
+            showError('An unexpected error occurred. Please try again.');
+        }
+        console.error('Scan error:', error);
     } finally {
         loadingOverlay.classList.remove('active');
+        scanBtn.disabled = false;
     }
 }
 
+// Add warning display function
+function showWarning(message) {
+    const warningDiv = document.createElement('div');
+    warningDiv.className = 'warning-message';
+    warningDiv.innerHTML = `
+        <i class="fas fa-exclamation-circle"></i>
+        <p>${message}</p>
+    `;
+    
+    // Insert at the top of results
+    results.insertBefore(warningDiv, results.firstChild);
+}
+
+// Enhanced displayResults function
 function displayResults(data) {
     results.innerHTML = '';
     
-    if (data.vulnerabilities.length === 0) {
+    if (!data.vulnerabilities || data.vulnerabilities.length === 0) {
         results.innerHTML = `
             <div class="success-message">
                 <i class="fas fa-check-circle"></i>
                 <h3>No vulnerabilities found!</h3>
                 <p>Your code appears to be secure based on our analysis.</p>
+                ${data.analysis_time ? `<p class="analysis-time">Analysis completed in ${data.analysis_time}s</p>` : ''}
             </div>
         `;
         return;
     }
     
-    // Summary section
+    // Summary section with enhanced stats
     const summaryHtml = `
         <div class="summary-section">
             <h3>Scan Summary</h3>
@@ -170,21 +253,48 @@ function displayResults(data) {
                     <div class="stat-label">Lines of Code</div>
                 </div>
             </div>
+            ${data.analysis_time ? `<p class="analysis-time">Analysis completed in ${data.analysis_time}s</p>` : ''}
         </div>
     `;
     
     results.innerHTML = summaryHtml;
     
-    // Vulnerabilities
+    // Group vulnerabilities by severity
+    const vulnsBySeverity = groupVulnerabilitiesBySeverity(data.vulnerabilities);
+    
+    // Create vulnerabilities container
     const vulnContainer = document.createElement('div');
     vulnContainer.className = 'vulnerabilities-container';
     
-    data.vulnerabilities.forEach(vuln => {
-        const vulnElement = createVulnerabilityElement(vuln);
-        vulnContainer.appendChild(vulnElement);
+    // Display vulnerabilities grouped by severity
+    ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].forEach(severity => {
+        if (vulnsBySeverity[severity] && vulnsBySeverity[severity].length > 0) {
+            const severityGroup = document.createElement('div');
+            severityGroup.className = 'severity-group';
+            severityGroup.innerHTML = `<h4 class="severity-header ${severity.toLowerCase()}">${severity} (${vulnsBySeverity[severity].length})</h4>`;
+            
+            vulnsBySeverity[severity].forEach(vuln => {
+                const vulnElement = createVulnerabilityElement(vuln);
+                severityGroup.appendChild(vulnElement);
+            });
+            
+            vulnContainer.appendChild(severityGroup);
+        }
     });
     
     results.appendChild(vulnContainer);
+}
+
+// Helper function to group vulnerabilities by severity
+function groupVulnerabilitiesBySeverity(vulnerabilities) {
+    return vulnerabilities.reduce((groups, vuln) => {
+        const severity = vuln.severity || 'LOW';
+        if (!groups[severity]) {
+            groups[severity] = [];
+        }
+        groups[severity].push(vuln);
+        return groups;
+    }, {});
 }
 
 function createVulnerabilityElement(vuln) {
@@ -245,7 +355,7 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// Add success and error message styles
+// Add all styles
 const style = document.createElement('style');
 style.textContent = `
 .success-message, .error-message {
@@ -259,6 +369,11 @@ style.textContent = `
     color: #065f46;
 }
 
+[data-theme="dark"] .success-message {
+    background-color: #064e3b;
+    color: #6ee7b7;
+}
+
 .success-message i {
     font-size: 3rem;
     margin-bottom: 20px;
@@ -270,6 +385,11 @@ style.textContent = `
     color: #991b1b;
 }
 
+[data-theme="dark"] .error-message {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+}
+
 .error-message i {
     font-size: 3rem;
     margin-bottom: 20px;
@@ -278,6 +398,74 @@ style.textContent = `
 
 .vulnerabilities-container {
     margin-top: 20px;
+}
+
+.warning-message {
+    background-color: #fef3c7;
+    color: #92400e;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+[data-theme="dark"] .warning-message {
+    background-color: #78350f;
+    color: #fef3c7;
+}
+
+.warning-message i {
+    font-size: 1.5rem;
+    color: #f59e0b;
+}
+
+.analysis-time {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-top: 10px;
+    text-align: center;
+}
+
+.severity-group {
+    margin-bottom: 30px;
+}
+
+.severity-header {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.severity-header.critical {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+}
+
+.severity-header.high {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.severity-header.medium {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--warning-color);
+}
+
+.severity-header.low {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+[data-theme="dark"] .severity-header {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#scanBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 `;
 document.head.appendChild(style);
