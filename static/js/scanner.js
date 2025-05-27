@@ -72,9 +72,11 @@ const fileInput = document.getElementById('fileInput');
 const exportJsonBtn = document.getElementById('exportJsonBtn');
 const exportReportBtn = document.getElementById('exportReportBtn');
 const exportActions = document.querySelector('.export-actions');
+const languageSelect = document.getElementById('languageSelect');
 
-// Example vulnerable code
-const exampleCode = `import os
+// Language-specific example vulnerable code
+const exampleCodes = {
+    python: `import os
 import sqlite3
 from flask import Flask, request
 
@@ -101,13 +103,6 @@ def search():
     results = conn.execute(query)
     return str(results.fetchall())
 
-@app.route('/run')
-def run_command():
-    # Command injection vulnerability
-    cmd = request.args.get('cmd')
-    output = os.system(cmd)
-    return str(output)
-
 @app.route('/eval')
 def evaluate():
     # Code injection via eval
@@ -119,11 +114,114 @@ def generate_token():
     # Weak random number generation
     import random
     token = random.randint(1000, 9999)
-    return str(token)
+    return str(token)`,
 
-if __name__ == '__main__':
-    app.run(debug=True)
-`;
+    javascript: `const express = require('express');
+const mysql = require('mysql');
+const app = express();
+
+// Hardcoded credentials - Security Issue!
+const password = "admin123";
+const apiKey = "sk-1234567890abcdef";
+
+app.get('/user/:id', (req, res) => {
+    // SQL Injection vulnerability
+    const userId = req.params.id;
+    const query = "SELECT * FROM users WHERE id = " + userId;
+    connection.query(query, (err, results) => {
+        res.json(results);
+    });
+});
+
+app.get('/search', (req, res) => {
+    // XSS vulnerability
+    const searchTerm = req.query.q;
+    res.send('<h1>Results for: ' + searchTerm + '</h1>');
+});
+
+app.get('/eval', (req, res) => {
+    // Code injection via eval
+    const code = req.query.code;
+    const result = eval(code);
+    res.send(result);
+});
+
+// Insecure random
+function generateToken() {
+    return Math.random().toString(36);
+}`,
+
+    java: `import java.sql.*;
+import java.util.Random;
+
+public class VulnerableApp {
+    // Hardcoded credentials - Security Issue!
+    private String password = "admin123";
+    private String apiKey = "sk-1234567890abcdef";
+    
+    public String getUser(String userId) {
+        // SQL Injection vulnerability
+        String query = "SELECT * FROM users WHERE id = " + userId;
+        try {
+            Statement stmt = connection.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+            return rs.toString();
+        } catch (SQLException e) {
+            return "Error";
+        }
+    }
+    
+    public void processFile(String filename) {
+        // Path traversal vulnerability
+        File file = new File("/uploads/" + filename);
+        file.delete();
+    }
+    
+    public String generateToken() {
+        // Insecure random
+        Random rand = new Random();
+        return String.valueOf(rand.nextInt(9999));
+    }
+}`,
+
+    php: `<?php
+// Hardcoded credentials - Security Issue!
+$password = "admin123";
+$api_key = "sk-1234567890abcdef";
+
+// SQL Injection vulnerability
+function getUser($userId) {
+    $query = "SELECT * FROM users WHERE id = " . $userId;
+    $result = mysql_query($query);
+    return $result;
+}
+
+// XSS vulnerability
+function displaySearch() {
+    echo "Search results for: " . $_GET['q'];
+}
+
+// Command injection
+function runCommand($userInput) {
+    system("ls " . $userInput);
+}
+
+// Path traversal
+function readFile($filename) {
+    include("/var/www/uploads/" . $filename);
+}
+
+// Weak crypto
+function hashPassword($pass) {
+    return md5($pass);
+}
+
+// Insecure deserialization
+function loadData($data) {
+    return unserialize($data);
+}
+?>`
+};
 
 // Event listeners
 scanBtn.addEventListener('click', scanCode);
@@ -132,14 +230,32 @@ exampleBtn.addEventListener('click', loadExample);
 fileInput.addEventListener('change', handleFileUpload);
 exportJsonBtn.addEventListener('click', () => exportResults('json'));
 exportReportBtn.addEventListener('click', () => exportResults('report'));
+languageSelect.addEventListener('change', updatePlaceholder);
+
+// Update placeholder based on selected language
+function updatePlaceholder() {
+    const language = languageSelect.value;
+    const placeholders = {
+        auto: 'Paste your code here...',
+        python: 'Paste your Python code here...',
+        javascript: 'Paste your JavaScript code here...',
+        java: 'Paste your Java code here...',
+        php: 'Paste your PHP code here...'
+    };
+    codeInput.placeholder = placeholders[language] || placeholders.auto;
+}
 
 // File upload handler
 async function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    if (!file.name.endsWith('.py')) {
-        showToast('Please upload a Python file (.py)', 'error');
+    // Check file extension
+    const validExtensions = ['.py', '.js', '.jsx', '.java', '.php'];
+    const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    
+    if (!validExtensions.includes(fileExt)) {
+        showToast('Please upload a supported file type (.py, .js, .java, .php)', 'error');
         return;
     }
     
@@ -151,6 +267,21 @@ async function handleFileUpload(event) {
     try {
         const text = await file.text();
         codeInput.value = text;
+        
+        // Auto-detect language from file extension
+        const langMap = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.jsx': 'javascript',
+            '.java': 'java',
+            '.php': 'php'
+        };
+        const detectedLang = langMap[fileExt];
+        if (detectedLang) {
+            languageSelect.value = detectedLang;
+            updatePlaceholder();
+        }
+        
         showToast('File loaded successfully', 'success');
     } catch (error) {
         showToast('Error reading file', 'error');
@@ -172,9 +303,10 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// Enhanced scanCode function with better error handling
+// Enhanced scanCode function with multi-language support
 async function scanCode() {
     const code = codeInput.value;
+    const language = languageSelect.value;
     
     // Client-side validation
     const validation = validateCode(code);
@@ -197,7 +329,8 @@ async function scanCode() {
             },
             body: JSON.stringify({
                 code: code,
-                filename: 'user_code.py'
+                filename: 'user_code',
+                language: language === 'auto' ? null : language
             }),
             // Add timeout
             signal: AbortSignal.timeout(30000) // 30 second timeout
@@ -287,7 +420,7 @@ function displayResults(data) {
             <div class="success-message">
                 <i class="fas fa-check-circle"></i>
                 <h3>No vulnerabilities found!</h3>
-                <p>Your code appears to be secure based on our analysis.</p>
+                <p>Your ${data.language || 'code'} appears to be secure based on our analysis.</p>
                 ${data.analysis_time ? `<p class="analysis-time">Analysis completed in ${data.analysis_time}s</p>` : ''}
             </div>
         `;
@@ -298,6 +431,7 @@ function displayResults(data) {
     const summaryHtml = `
         <div class="summary-section">
             <h3>Scan Summary</h3>
+            <p class="detected-language">Language: <strong>${data.language || 'Unknown'}</strong></p>
             <div class="summary-stats">
                 <div class="stat-item">
                     <div class="stat-value">${data.summary.total}</div>
@@ -356,12 +490,13 @@ function groupVulnerabilitiesBySeverity(vulnerabilities) {
     }, {});
 }
 
-// Enhanced vulnerability element with copy button
+// Enhanced vulnerability element with copy button and language-specific highlighting
 function createVulnerabilityElement(vuln) {
     const div = document.createElement('div');
     div.className = `vulnerability-item ${vuln.severity.toLowerCase()}`;
     
     const snippetId = `snippet-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const language = vuln.language || 'python';
     
     div.innerHTML = `
         <div class="vuln-header">
@@ -378,12 +513,12 @@ function createVulnerabilityElement(vuln) {
         </div>
         <div class="code-snippet-container">
             <div class="snippet-header">
-                <span>Code snippet</span>
+                <span>Code snippet (${language})</span>
                 <button class="copy-btn" onclick="copyCodeSnippet('${snippetId}')" title="Copy code">
                     <i class="fas fa-copy"></i>
                 </button>
             </div>
-            <pre class="code-snippet" id="${snippetId}"><code class="language-python">${escapeHtml(vuln.code_snippet)}</code></pre>
+            <pre class="code-snippet" id="${snippetId}"><code class="language-${language}">${escapeHtml(vuln.code_snippet)}</code></pre>
         </div>
     `;
     
@@ -412,41 +547,31 @@ function copyCodeSnippet(snippetId) {
     });
 }
 
-// Export functionality
-function exportResults(format) {
-    if (!lastScanResults) {
-        showToast('No results to export', 'error');
-        return;
+// Load language-specific example
+function loadExample() {
+    const selectedLanguage = languageSelect.value;
+    let language = selectedLanguage === 'auto' ? 'python' : selectedLanguage;
+    
+    // Load the example for the selected language
+    const exampleCode = exampleCodes[language] || exampleCodes.python;
+    codeInput.value = exampleCode;
+    
+    // Update language selector if it was on auto
+    if (selectedLanguage === 'auto') {
+        languageSelect.value = language;
+        updatePlaceholder();
     }
     
-    if (format === 'json') {
-        exportAsJSON();
-    } else if (format === 'report') {
-        exportAsReport();
-    }
+    showToast(`Loaded ${language} example code`, 'info');
 }
 
-function exportAsJSON() {
-    const dataStr = JSON.stringify(lastScanResults, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `security-scan-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    showToast('Results exported as JSON', 'success');
-}
-
+// Export functionality remains the same but includes language info
 function exportAsReport() {
     if (!lastScanResults) return;
     
     let report = `SECURITY SCAN REPORT
 Generated: ${new Date().toLocaleString()}
+Language: ${lastScanResults.language || 'Unknown'}
 =====================================
 
 SUMMARY
@@ -479,6 +604,7 @@ VULNERABILITY BREAKDOWN
             
             grouped[severity].forEach((vuln, index) => {
                 report += `${index + 1}. ${vuln.name}\n`;
+                report += `   Language: ${vuln.language}\n`;
                 report += `   Location: Line ${vuln.line}, Column ${vuln.column}\n`;
                 report += `   Message: ${vuln.message}\n`;
                 if (vuln.cwe) report += `   CWE: ${vuln.cwe}\n`;
@@ -505,6 +631,37 @@ VULNERABILITY BREAKDOWN
     showToast('Report exported as text file', 'success');
 }
 
+// Export as JSON
+function exportAsJSON() {
+    const dataStr = JSON.stringify(lastScanResults, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `security-scan-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast('Results exported as JSON', 'success');
+}
+
+// Export results wrapper
+function exportResults(format) {
+    if (!lastScanResults) {
+        showToast('No results to export', 'error');
+        return;
+    }
+    
+    if (format === 'json') {
+        exportAsJSON();
+    } else if (format === 'report') {
+        exportAsReport();
+    }
+}
+
 function clearCode() {
     codeInput.value = '';
     results.innerHTML = `
@@ -515,10 +672,6 @@ function clearCode() {
     `;
     exportActions.style.display = 'none';
     lastScanResults = null;
-}
-
-function loadExample() {
-    codeInput.value = exampleCode;
 }
 
 function showError(message) {
@@ -545,10 +698,33 @@ function escapeHtml(text) {
 // Make copyCodeSnippet available globally
 window.copyCodeSnippet = copyCodeSnippet;
 
-// Add all styles
+// Add all styles (including language selector)
 const style = document.createElement('style');
 style.textContent = `
-/* Existing styles */
+/* Language selector */
+.language-select {
+    padding: 8px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+.language-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.detected-language {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+}
+
+/* All other existing styles from before... */
 .success-message, .error-message {
     text-align: center;
     padding: 40px;
@@ -663,6 +839,8 @@ style.textContent = `
 .header-actions {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .export-actions {

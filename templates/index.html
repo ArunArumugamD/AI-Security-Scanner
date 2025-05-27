@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Security Scanner</title>
+    <title>SecureCode AI - Multi-Language Code Analysis</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,13 +29,20 @@
                     <div class="section-header">
                         <h2>Code Input</h2>
                         <div class="header-actions">
+                            <select id="languageSelect" class="language-select">
+                                <option value="auto">Auto-detect</option>
+                                <option value="python">Python</option>
+                                <option value="javascript">JavaScript</option>
+                                <option value="java">Java</option>
+                                <option value="php">PHP</option>
+                            </select>
                             <button id="exampleBtn" class="btn-secondary">
                                 <i class="fas fa-code"></i> Load Example
                             </button>
                             <label for="fileInput" class="btn-secondary">
                                 <i class="fas fa-upload"></i> Upload File
                             </label>
-                            <input type="file" id="fileInput" accept=".py" style="display: none">
+                            <input type="file" id="fileInput" accept=".py,.js,.jsx,.java,.php" style="display: none">
                         </div>
                     </div>
                     <textarea id="codeInput" placeholder="Paste your code here..."></textarea>
@@ -72,14 +79,27 @@
 
             <div class="info-section">
                 <div class="info-card">
-                    <h3><i class="fas fa-info-circle"></i> About This Scanner</h3>
-                    <p>This AI-powered security scanner detects common vulnerabilities in Python code including:</p>
+                    <h3><i class="fas fa-code"></i> Supported Languages</h3>
+                    <p>Our scanner now supports multiple programming languages:</p>
+                    <ul>
+                        <li><strong>Python</strong> </li>
+                        <li><strong>JavaScript</strong></li>
+                        <li><strong>Java</strong> </li>
+                        <li><strong>PHP</strong></li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h3><i class="fas fa-bug"></i> Detected Vulnerabilities</h3>
+                    <p>We detect security issues including:</p>
                     <ul>
                         <li>SQL Injection</li>
                         <li>Cross-Site Scripting (XSS)</li>
-                        <li>Hardcoded Secrets</li>
-                        <li>Path Traversal</li>
+                        <li>Hardcoded Secrets & API Keys</li>
                         <li>Command Injection</li>
+                        <li>Path Traversal</li>
+                        <li>Insecure Deserialization</li>
+                        <li>Weak Cryptography</li>
                         <li>And more...</li>
                     </ul>
                 </div>
@@ -109,6 +129,9 @@
     <!-- Add Prism.js for syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
     <script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
 </body>
 </html>
