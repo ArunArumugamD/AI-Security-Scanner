@@ -81,6 +81,7 @@ def scan_code():
 
         code = data.get('code', '')
         filename = data.get('filename', 'uploaded_code.py')
+        language = data.get('language')
 
         if len(code.encode('utf-8')) > config.MAX_FILE_SIZE:
             return jsonify({'success': False, 'error': 'Code size exceeds maximum allowed'}), 400
@@ -90,7 +91,7 @@ def scan_code():
         start_time = time.time()
         MAX_ANALYSIS_TIME = 30
 
-        results = analyzer.analyze_code(code, filename)
+        results = analyzer.analyze_code(code, filename, language)
 
         analysis_time = time.time() - start_time
         if analysis_time > MAX_ANALYSIS_TIME:
