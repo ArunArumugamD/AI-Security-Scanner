@@ -3,100 +3,146 @@
         {
             "id": "SQL_INJECTION_001",
             "name": "SQL Injection - String Concatenation",
-            "description": "SQL queries should not be constructed using string concatenation with user input",
+            "languages": ["python", "javascript", "java", "php"],
             "severity": "CRITICAL",
-            "pattern": "(execute|query)\\s*\\(.*?['\"].*?\\+.*?\\)",
-            "message": "Potential SQL injection vulnerability. Use parameterized queries instead.",
-            "cwe": "CWE-89",
-            "owasp": "A03:2021"
-        },
-        {
-            "id": "SQL_INJECTION_002",
-            "name": "SQL Injection - String Formatting",
-            "description": "SQL queries should not use string formatting with user input",
-            "severity": "CRITICAL",
-            "pattern": "(execute|query)\\s*\\(.*?(\\.format|%|f['\"])",
-            "message": "Potential SQL injection via string formatting. Use parameterized queries.",
+            "patterns": {
+                "python": "(execute|query)\\s*\\(.*?['\"].*?\\+.*?\\)",
+                "javascript": "(query|execute)\\s*\\(.*?\\+.*?\\)",
+                "java": "(executeQuery|executeUpdate)\\s*\\(.*?\\+.*?\\)",
+                "php": "\\$(query|sql).*?\\.(.*?\\$.*?\\.|.*?\\$_)"
+            },
+            "message": "Potential SQL injection vulnerability. Use parameterized queries.",
             "cwe": "CWE-89",
             "owasp": "A03:2021"
         },
         {
             "id": "HARDCODED_SECRET_001",
             "name": "Hardcoded Password",
-            "description": "Passwords should not be hardcoded in source code",
+            "languages": ["python", "javascript", "java", "php"],
             "severity": "HIGH",
-            "pattern": "(password|passwd|pwd)\\s*=\\s*['\"][^'\"]+['\"]",
-            "message": "Hardcoded password detected. Use environment variables or secure vaults.",
+            "patterns": {
+                "python": "(password|passwd|pwd)\\s*=\\s*['\"][^'\"]+['\"]",
+                "javascript": "(password|passwd|pwd)\\s*[:=]\\s*['\"][^'\"]+['\"]",
+                "java": "(String\\s+)?(password|passwd|pwd)\\s*=\\s*\"[^\"]+\"",
+                "php": "\\$(password|passwd|pwd)\\s*=\\s*['\"][^'\"]+['\"]"
+            },
+            "message": "Hardcoded password detected. Use environment variables.",
             "cwe": "CWE-798",
             "owasp": "A07:2021"
         },
         {
             "id": "HARDCODED_SECRET_002",
             "name": "Hardcoded API Key",
-            "description": "API keys should not be hardcoded in source code",
+            "languages": ["python", "javascript", "java", "php"],
             "severity": "HIGH",
-            "pattern": "(api_key|apikey|secret_key|secret)\\s*=\\s*['\"][^'\"]+['\"]",
+            "patterns": {
+                "python": "(api_key|apikey|secret_key|secret)\\s*=\\s*['\"][^'\"]+['\"]",
+                "javascript": "(apiKey|api_key|secretKey|secret)\\s*[:=]\\s*['\"][^'\"]+['\"]",
+                "java": "(String\\s+)?(apiKey|api_key|secretKey)\\s*=\\s*\"[^\"]+\"",
+                "php": "\\$(api_key|apikey|secret_key)\\s*=\\s*['\"][^'\"]+['\"]"
+            },
             "message": "Hardcoded API key detected. Use environment variables.",
             "cwe": "CWE-798",
             "owasp": "A07:2021"
         },
         {
-            "id": "PATH_TRAVERSAL_001",
-            "name": "Path Traversal",
-            "description": "File paths should not be constructed from user input without validation",
-            "severity": "HIGH",
-            "pattern": "open\\s*\\(.*?\\+.*?\\)",
-            "message": "Potential path traversal vulnerability. Validate and sanitize file paths.",
-            "cwe": "CWE-22",
-            "owasp": "A01:2021"
-        },
-        {
-            "id": "COMMAND_INJECTION_001",
-            "name": "Command Injection - os.system",
-            "description": "System commands should not include user input",
-            "severity": "CRITICAL",
-            "pattern": "os\\.system\\s*\\(.*?\\+.*?\\)",
-            "message": "Potential command injection. Use subprocess with proper escaping.",
-            "cwe": "CWE-78",
-            "owasp": "A03:2021"
-        },
-        {
-            "id": "INSECURE_RANDOM_001",
-            "name": "Insecure Random",
-            "description": "Use cryptographically secure random for security purposes",
-            "severity": "MEDIUM",
-            "pattern": "random\\.(random|randint|choice)\\s*\\(",
-            "message": "Insecure random number generator. Use secrets module for security.",
-            "cwe": "CWE-330",
-            "owasp": "A02:2021"
-        },
-        {
             "id": "EVAL_USAGE_001",
             "name": "Use of eval()",
-            "description": "Avoid using eval() as it can execute arbitrary code",
+            "languages": ["python", "javascript", "php"],
             "severity": "CRITICAL",
-            "pattern": "eval\\s*\\(",
-            "message": "Use of eval() is dangerous and can lead to code injection.",
+            "patterns": {
+                "python": "eval\\s*\\(",
+                "javascript": "eval\\s*\\(",
+                "php": "eval\\s*\\("
+            },
+            "message": "eval() can execute arbitrary code and is a security risk.",
             "cwe": "CWE-95",
             "owasp": "A03:2021"
         },
         {
+            "id": "COMMAND_INJECTION_001",
+            "name": "Command Injection",
+            "languages": ["python", "javascript", "java", "php"],
+            "severity": "CRITICAL",
+            "patterns": {
+                "python": "(os\\.system|subprocess\\.call)\\s*\\(.*?\\+.*?\\)",
+                "javascript": "(exec|spawn)\\s*\\(.*?\\+.*?\\)",
+                "java": "Runtime\\.getRuntime\\(\\)\\.exec\\s*\\(.*?\\+.*?\\)",
+                "php": "(system|exec|shell_exec|passthru)\\s*\\(.*?\\$.*?\\)"
+            },
+            "message": "Potential command injection. Validate and sanitize input.",
+            "cwe": "CWE-78",
+            "owasp": "A03:2021"
+        },
+        {
+            "id": "PATH_TRAVERSAL_001",
+            "name": "Path Traversal",
+            "languages": ["python", "javascript", "java", "php"],
+            "severity": "HIGH",
+            "patterns": {
+                "python": "open\\s*\\(.*?\\+.*?\\)",
+                "javascript": "(readFile|readFileSync)\\s*\\(.*?\\+.*?\\)",
+                "java": "new\\s+File\\s*\\(.*?\\+.*?\\)",
+                "php": "(fopen|file_get_contents|include|require)\\s*\\(.*?\\$.*?\\)"
+            },
+            "message": "Potential path traversal vulnerability. Validate file paths.",
+            "cwe": "CWE-22",
+            "owasp": "A01:2021"
+        },
+        {
+            "id": "XSS_001",
+            "name": "Cross-Site Scripting (XSS)",
+            "languages": ["javascript", "php"],
+            "severity": "HIGH",
+            "patterns": {
+                "javascript": "(innerHTML|outerHTML)\\s*=\\s*[^'\"]*\\+",
+                "php": "echo\\s+.*?\\$_(GET|POST|REQUEST)"
+            },
+            "message": "Potential XSS vulnerability. Sanitize user input before output.",
+            "cwe": "CWE-79",
+            "owasp": "A03:2021"
+        },
+        {
+            "id": "INSECURE_RANDOM_001",
+            "name": "Insecure Random Number Generation",
+            "languages": ["python", "javascript", "java"],
+            "severity": "MEDIUM",
+            "patterns": {
+                "python": "random\\.(random|randint|choice)\\s*\\(",
+                "javascript": "Math\\.random\\s*\\(",
+                "java": "new\\s+Random\\s*\\("
+            },
+            "message": "Use cryptographically secure random for security purposes.",
+            "cwe": "CWE-330",
+            "owasp": "A02:2021"
+        },
+        {
             "id": "WEAK_CRYPTO_001",
             "name": "Weak Cryptography - MD5",
-            "description": "MD5 is cryptographically broken and should not be used",
+            "languages": ["python", "javascript", "java", "php"],
             "severity": "HIGH",
-            "pattern": "hashlib\\.md5\\s*\\(",
-            "message": "MD5 is insecure. Use SHA-256 or stronger algorithms.",
+            "patterns": {
+                "python": "hashlib\\.md5\\s*\\(",
+                "javascript": "crypto\\.createHash\\s*\\(['\"]md5['\"]\\)",
+                "java": "MessageDigest\\.getInstance\\s*\\(['\"]MD5['\"]\\)",
+                "php": "md5\\s*\\("
+            },
+            "message": "MD5 is cryptographically broken. Use SHA-256 or stronger.",
             "cwe": "CWE-327",
             "owasp": "A02:2021"
         },
         {
             "id": "INSECURE_DESERIALIZATION_001",
-            "name": "Pickle Deserialization",
-            "description": "Pickle can execute arbitrary code during deserialization",
+            "name": "Insecure Deserialization",
+            "languages": ["python", "javascript", "java", "php"],
             "severity": "HIGH",
-            "pattern": "pickle\\.loads?\\s*\\(",
-            "message": "Pickle deserialization can execute arbitrary code. Use JSON instead.",
+            "patterns": {
+                "python": "pickle\\.loads?\\s*\\(",
+                "javascript": "JSON\\.parse\\s*\\(.*?\\$",
+                "java": "ObjectInputStream.*?readObject\\s*\\(",
+                "php": "unserialize\\s*\\("
+            },
+            "message": "Potential insecure deserialization. Validate input before deserializing.",
             "cwe": "CWE-502",
             "owasp": "A08:2021"
         }
