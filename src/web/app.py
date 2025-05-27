@@ -7,6 +7,8 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import os
 import sys
+import tempfile
+from werkzeug.utils import secure_filename
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -59,6 +61,11 @@ app = Flask(__name__,
             static_folder='../../static')
 CORS(app)
 
+# Configure Flask app
+app.config['SECRET_KEY'] = config.SECRET_KEY
+app.config['MAX_CONTENT_LENGTH'] = config.MAX_FILE_SIZE
+app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
+
 @app.route('/')
 def index():
     """Render main page"""
@@ -69,19 +76,45 @@ def index():
 def scan_code():
     """API endpoint for code scanning with enhanced error handling"""
     try:
-        if not request.is_json:
-            return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
-
-        data = request.get_json()
-
-        if not data:
-            return jsonify({'success': False, 'error': 'No data provided'}), 400
-        if 'code' not in data:
-            return jsonify({'success': False, 'error': 'Missing required field: code'}), 400
-
-        code = data.get('code', '')
-        filename = data.get('filename', 'uploaded_code.py')
-        language = data.get('language')
+        # Handle both JSON and file upload
+        code = None
+        filename = 'uploaded_code.py'
+        language = None
+        
+        # Check for file upload
+        if 'file' in request.files:
+            file = request.files['file']
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                # Save to temporary file
+                temp_path = os.path.join(tempfile.gettempdir(), filename)
+                file.save(temp_path)
+                try:
+                    with open(temp_path, 'r', encoding='utf-8') as f:
+                        code = f.read()
+                finally:
+                    # Clean up temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                        
+                # Detect language from extension
+                ext = os.path.splitext(filename)[1].lower()
+                language_map = {'.py': 'python', '.js': 'javascript', '.java': 'java', '.php': 'php'}
+                language = language_map.get(ext, 'python')
+        
+        # Check for JSON data
+        elif request.is_json:
+            data = request.get_json()
+            if not data:
+                return jsonify({'success': False, 'error': 'No data provided'}), 400
+            if 'code' not in data:
+                return jsonify({'success': False, 'error': 'Missing required field: code'}), 400
+            
+            code = data.get('code', '')
+            filename = data.get('filename', 'uploaded_code.py')
+            language = data.get('language')
+        else:
+            return jsonify({'success': False, 'error': 'No code or file provided'}), 400
 
         if len(code.encode('utf-8')) > config.MAX_FILE_SIZE:
             return jsonify({'success': False, 'error': 'Code size exceeds maximum allowed'}), 400
@@ -120,11 +153,35 @@ def get_rules():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint for Render"""
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'environment': 'production' if os.environ.get('PORT') else 'development'
     })
+
+# Cleanup old temporary files (for Render)
+@app.before_request
+def cleanup_old_files():
+    """Clean up old temporary files on Render"""
+    if os.environ.get('PORT') and hasattr(config, 'UPLOAD_FOLDER'):
+        try:
+            import random
+            # Only run cleanup 10% of the time to avoid overhead
+            if random.random() < 0.1:
+                current_time = time.time()
+                temp_dir = tempfile.gettempdir()
+                for filename in os.listdir(temp_dir):
+                    filepath = os.path.join(temp_dir, filename)
+                    if os.path.isfile(filepath):
+                        # Remove files older than 1 hour
+                        if current_time - os.path.getmtime(filepath) > 3600:
+                            try:
+                                os.remove(filepath)
+                            except:
+                                pass
+        except:
+            pass
 
 @app.errorhandler(404)
 def not_found(error):
